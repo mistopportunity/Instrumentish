@@ -11,7 +11,7 @@
 
     <div id="node-table">
         <div id="file-drop-zone" class="node generic" ondrop="fileDropped(event)" ondragover="preventDefaultDrag(event)">
-            <p>drop zone</p>
+            <p>file drop</p>
         </div>
         <div id="node-creator" class="node create">
             <p>create</p>
@@ -24,7 +24,7 @@
 
         <div id="node-tools" class="node tools">
             <p>tool mode</p>
-            <button id="connector-tool" onclick="clickedConnector()">connect</button>
+            <button id="connector-tool" onclick="clickedConnector()" disabled>connect</button>
             <button id="disconnector-tool" onclick="clickedDisconnector()" disabled>disconnect</button>
             <button id="binder-tool" onclick="clickedBinder()" disabled>bind</button>
             <button id="deleter-tool" onclick="clickedDeleter()" disabled>delete</button>

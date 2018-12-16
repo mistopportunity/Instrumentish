@@ -78,6 +78,8 @@ const masterNode = document.getElementById("node-master");
 const masterNodePin = masterNode.children[0];
 
 const connectorToolButton = document.getElementById("connector-tool");
+connectorToolButton.disabled = false;
+
 const disconnectorToolButton = document.getElementById("disconnector-tool");
 const binderToolButton = document.getElementById("binder-tool");
 const deleterToolButton = document.getElementById("deleter-tool");
@@ -469,10 +471,6 @@ const normalizeNode = abstractNode => {
 
 }
 
-const genericDisconnect = (input,output,unmapDictionaries=true) => {
-    //Todo: We make or may not need a generic disconnect method because an argument-less AudioNode.disconnect() disconnects all AudioNodes.
-}
-
 const genericConnect = (input,output,mapDictionaries=true) => {
 
     //This method is very confused on the boolean difference between input and output.
@@ -513,7 +511,7 @@ const inputPinClicked = (nodeID,element,switchIndex=-1) => {
             switchIndex: outputSwitchIndex
         },true);
     },inputNode=>{
-        //Todo: Disconnect all outputs that are going into this input node
+        //Todo: Disconnect all outputs that are going into this input node, clear the outputs list, and delete associated DOM
     });
 }
 
@@ -528,7 +526,7 @@ const outputPinClicked = (nodeID,element,switchIndex=-1) => {
             switchIndex: outputSwitchIndex
         },true);    
     },outputNode=>{
-        //Todo: Disconnect all inputs that are going out of this output node
+        //Todo: Disconnect all inputs that are going out of this output node, clear the inputs list, and delete associated DOM
     });
 }
 
