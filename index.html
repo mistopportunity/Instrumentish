@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="style.css">
+    <title>Instrumentish</title>
+</head>
+<body>
+
+    <div id="node-table">
+        <div id="file-drop-zone" class="node generic" ondrop="fileDropped(event)" ondragover="preventDefaultDrag(event)">
+            <p>drop zone</p>
+        </div>
+        <div id="node-creator" class="node create">
+            <p>create</p>
+            <select id="node-selector">
+                <option value="volume-control">volume control</option>
+                <option value="output-switch">output switch</option>
+                <option value="input-switch">input switch</option>
+            </select>
+            <button onclick="addNode()">add node</button>
+        </div>
+
+        <div id="node-tools" class="node tools">
+            <p>tool mode</p>
+            <button id="connector-tool" onclick="clickedConnector()">connect</button>
+            <button id="disconnector-tool" onclick="clickedDisconnector()" disabled>disconnect</button>
+            <button id="binder-tool" onclick="clickedBinder()" disabled>bind</button>
+            <button id="deleter-tool" onclick="clickedDeleter()" disabled>delete</button>
+        </div>
+
+        <div id="node-master" class="node generic master">
+            <div class="input-pin"></div>
+            <p>master output</p>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
