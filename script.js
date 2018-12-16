@@ -198,14 +198,13 @@ const addNode =  function() {
 };
 
 const applySourceControlOutputs = node => {
-    //Disconnect the buffer source node from the ouputs manually or does WebAudio GC handle it?
     for(let [key,value] of Object.entries(node.outputs)) {
-        genericConnect({
-                //output node - This is where sound comes from
+        genericConnect({ //Ignore the names of this function, just use the schematic below.
+                //Output node: This is where sound comes from
                 node: node,
                 switchIndex: -1
             },{
-                //input node - This is where we are sending sound to
+                //Input node: This is where we are sending sound to
                 node: value.node,
                 switchIndex: value.switchIndex
             },false 
@@ -299,11 +298,11 @@ const setSwitchState = (nodeID,condition) => {
     const node = nodeDictionary[nodeID];
 
     if(condition) {
-        //change from left to right
+        //Change from left input to right input.
         node.leftInputNode.disconnect(node.outputNode);
         node.rightInputNode.connect(node.outputNode);
     } else {
-        //change from right to left
+        //Change from right input to left input.
         node.rightInputNode.disconnect(node.outputNode);
         node.leftInputNode.connect(node.outputNode);
     }
@@ -315,8 +314,9 @@ const updateVoumeNode = (nodeID,value) => {
 }
 
 const getPinEnumeration = (pinIndex) => {
-    //TODO.
-    return "abcdefghijlmnopqrstuvwxyz"[pinIndex];
+    //Todo: Make a proper pin enumerator
+    const alphabet = "abcdefghijklmnopqrstuvwxyz";
+    return alphabet[pinIndex % alphabet.length];
 }
 
 let = pinQueue = null;
@@ -408,6 +408,9 @@ const normalizeNode = abstractNode => {
     let outputAudioNode = null;
     switch(abstractNode.node.type) {
         case "input-switch":
+            //Tracking schema: leftInputs, rightInputs, outputs
+            //Input node: outputNode
+            //Output nodes: leftInputNode, rightInputNode
 
             outputs = abstractNode.node.outputs;
             outputAudioNode = abstractNode.node.outputNode;
@@ -430,38 +433,31 @@ const normalizeNode = abstractNode => {
                 }
                 console.warn("Possible problem: Confusing switch index on output switch");
             }
-            //Tracking schema: leftInputs, rightInputs, outputs
-
-            //Input node: outputNode
-            //Output nodes: leftInputNode, rightInputNode
             break;
         case "volume-control":
             //Tracking schema: outputs, inputs
+            //Input node: gainNode
+            //Output node: gainNode
 
             inputAudioNode = abstractNode.node.gainNode;
             outputAudioNode = abstractNode.node.gainNode;
 
             outputs = abstractNode.node.outputs;
             inputs = abstractNode.node.inputs;
-
-            //Input node: gainNode
-            //Output node: gainNode
             break;
         case "file-source-control":
             //Tracking schema: outputs
+            //Output node: source
 
             outputs = abstractNode.node.outputs;
             outputAudioNode = abstractNode.node.source;
-
-            //Output node: source
             break;
         case "master":
+            //Tracking schema: inputs
+            //Input node: audioContext.destination
+
             inputAudioNode = audioContext.destination;
             inputs = abstractNode.node.inputs;
-
-            //Tracking schema: inputs
-
-            //Input node: audioContext.destination
             break;
     }
     return {
@@ -474,13 +470,13 @@ const normalizeNode = abstractNode => {
 }
 
 const genericDisconnect = (input,output,unmapDictionaries=true) => {
-    //Todo
+    //Todo: We make or may not need a generic disconnect method because an argument-less AudioNode.disconnect() disconnects all AudioNodes.
 }
 
 const genericConnect = (input,output,mapDictionaries=true) => {
 
     //This method is very confused on the boolean difference between input and output.
-    //This current configuration is very messy but it works and all callees expect that it accepts "input" followed by "output"
+    //This current configuration is very messy but it works and all callees expect that it accepts "input" followed by "output".
 
     const genericInput = normalizeNode(output);
     const genericOutput = normalizeNode(input);
@@ -517,28 +513,22 @@ const inputPinClicked = (nodeID,element,switchIndex=-1) => {
             switchIndex: outputSwitchIndex
         },true);
     },inputNode=>{
-        //use switchIndex
-
-        //todo
-        //disconnect all outputs that are going into this input node
+        //Todo: Disconnect all outputs that are going into this input node
     });
 }
 
 const outputPinClicked = (nodeID,element,switchIndex=-1) => {
     processPinClick(nodeID,element,switchIndex,false,
-        (outputNode,inputNode,outputSwitchIndex,inputSwitchIndex) => {
-            genericConnect({
-                node: inputNode,
-                switchIndex: inputSwitchIndex
-            },{
-                node: outputNode,
-                switchIndex: outputSwitchIndex
-            },true);    
-        },outputNode=>{
-        //use switchIndex
-
-        //todo
-        //disconnect all inputs that are going out of this input node
+    (outputNode,inputNode,outputSwitchIndex,inputSwitchIndex) => {
+        genericConnect({
+            node: inputNode,
+            switchIndex: inputSwitchIndex
+        },{
+            node: outputNode,
+            switchIndex: outputSwitchIndex
+        },true);    
+    },outputNode=>{
+        //Todo: Disconnect all inputs that are going out of this output node
     });
 }
 
