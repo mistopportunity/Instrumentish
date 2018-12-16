@@ -168,31 +168,18 @@ const addNode =  function() {
                 dictionaryEntry.name
             );
             break;
-        case "output-switch":
-            dictionaryEntry.type = "output-switch";
-            dictionaryEntry.leftOutputs = {};
-            dictionaryEntry.rightOutputs = {};
-            dictionaryEntry.inputs = {};
-
-            dictionaryEntry.leftOutputNode = audioContext.createAnalyser();
-            dictionaryEntry.rightOutputNode = audioContext.createAnalyser();
-            dictionaryEntry.inputNode = audioContext.createAnalyser();
-
-            dictionaryEntry.name = "output switch";
-            newNode = createSwitch(
-                nodeIDCounter,
-                dictionaryEntry.name,
-            );
-            break;
         case "input-switch":
             dictionaryEntry.type = "input-switch";
             dictionaryEntry.leftInputs = {};
             dictionaryEntry.rightInputs = {};
             dictionaryEntry.outputs = {};
 
-            dictionaryEntry.leftInputNode = audioContext.createAnalyser();
-            dictionaryEntry.rightInputNode = audioContext.createAnalyser();
-            dictionaryEntry.outputNode = audioContext.createAnalyser();
+            dictionaryEntry.leftInputNode = audioContext.createGain();
+            dictionaryEntry.rightInputNode = audioContext.createGain();
+            dictionaryEntry.outputNode = audioContext.createGain();
+
+            dictionaryEntry.isLeft = true;
+            dictionaryEntry.leftInputNode.connect(dictionaryEntry.outputNode);
 
             dictionaryEntry.name = "input switch";
             newNode = createSwitch(
@@ -212,14 +199,16 @@ const addNode =  function() {
 
 const applySourceControlOutputs = node => {
     //Disconnect the buffer source node from the ouputs manually or does WebAudio GC handle it?
-    for(let [outputKey,output] of Object.entries(node.outputs)) {
+    for(let [key,value] of Object.entries(node.outputs)) {
         genericConnect({
+                //output node - This is where sound comes from
                 node: node,
                 switchIndex: -1
             },{
-                node: nodeDictionary[outputKey],
-                switchIndex: output.switchIndex
-            },false
+                //input node - This is where we are sending sound to
+                node: value.node,
+                switchIndex: value.switchIndex
+            },false 
         );
     }
 }
@@ -246,8 +235,7 @@ const sourceControlButton1 = (nodeID,button1,button2) => {
             node.timePaused += (audioContext.currentTime - node.pauseStart);
             applySourceControlOutputs(node);
             applySourceControlEndEvent(node,button1,button2);
-            console.log("Pause time start: " + node.pausedTime);
-            node.source.start(audioContext.currentTime,node.pausedTime);//paused time isn't applying correctly
+            node.source.start(audioContext.currentTime,node.pausedTime);
         } else {
             button1.textContent = "play";
             node.paused = true;
@@ -306,31 +294,21 @@ const nameUpdated = (nodeID,newName) => {
     nodeDictionary[nodeID].name = newName;
 }
 
-const setSwitchState = (nodeID,isInputType,condition) => {
+const setSwitchState = (nodeID,condition) => {
 
     const node = nodeDictionary[nodeID];
 
-    if(isInputType) { //input switch - switches inputs
-
-        if(condition) { //change from left to right
-
-        } else { //change from right to left
-
-        }
-
-    } else { //output switch - switches outputs
-
-        if(condition) { //change from left to right
-
-        } else { //change from left to right
-
-        }
-
+    if(condition) {
+        //change from left to right
+        node.leftInputNode.disconnect(node.outputNode);
+        node.rightInputNode.connect(node.outputNode);
+    } else {
+        //change from right to left
+        node.rightInputNode.disconnect(node.outputNode);
+        node.leftInputNode.connect(node.outputNode);
     }
 
-
-    //TODO.
-    console.log(nodeID,isInputType,condition);
+    node.isLeft = !condition;
 }
 const updateVoumeNode = (nodeID,value) => {
     nodeDictionary[nodeID].gainNode.gain.setValueAtTime(value / volumeControlFactor, audioContext.currentTime);
@@ -429,76 +407,62 @@ const normalizeNode = abstractNode => {
     let inputAudioNode = null;
     let outputAudioNode = null;
     switch(abstractNode.node.type) {
-        case "output-switch":
+        case "input-switch":
 
-        inputs = abstractNode.node.inputs;
-        inputAudioNode = abstractNode.node.inputNode;
+            outputs = abstractNode.node.outputs;
+            outputAudioNode = abstractNode.node.outputNode;
 
-        if(abstractNode.switchIndex === 0) {
-            outputs = abstractNode.node.leftOutputs;
-            outputAudioNode = leftOutputNode;
+            if(abstractNode.switchIndex === 0) {
+                inputs = abstractNode.node.leftInputs;
+                inputAudioNode = abstractNode.node.leftInputNode;
 
-        } else if(abstract.switchIndex === 1) {
-            outputs = abstractNode.node.rightOutputs;
-            outputAudioNode = abstractNode.node.rightOutputNode;
+            } else if(abstractNode.switchIndex === 1) {
+                inputs = abstractNode.node.rightInputs;
+                inputAudioNode = abstractNode.node.rightInputNode;
+                
+            } else {
+                if(abstractNode.node.isLeft) {
+                    inputs = abstractNode.node.leftInputs;
+                    inputAudioNode = abstractNode.node.leftInputNode;
+                } else {
+                    inputs = abstractNode.node.rightInputs;
+                    inputAudioNode = abstractNode.node.rightInputNode;
+                }
+                console.warn("Possible problem: Confusing switch index on output switch");
+            }
+            //Tracking schema: leftInputs, rightInputs, outputs
 
-        } else {
-            console.error("Error: Confusing switch index on output switch");
-        }
-        //Tracking schema: leftOutputs, rightOutputs, inputs
+            //Input node: outputNode
+            //Output nodes: leftInputNode, rightInputNode
+            break;
+        case "volume-control":
+            //Tracking schema: outputs, inputs
 
-        //Input node: inputNode
-        //Output nodes: leftOutputNode, rightOutputNode
-        break;
-    case "input-switch":
+            inputAudioNode = abstractNode.node.gainNode;
+            outputAudioNode = abstractNode.node.gainNode;
 
-        outputs = abstractNode.node.outputs;
-        outputAudioNode = abstractNode.node.outputNode;
+            outputs = abstractNode.node.outputs;
+            inputs = abstractNode.node.inputs;
 
-        if(abstractNode.switchIndex === 0) {
-            inputs = abstractNode.node.leftInputs;
-            inputAudioNode = leftInputNode;
+            //Input node: gainNode
+            //Output node: gainNode
+            break;
+        case "file-source-control":
+            //Tracking schema: outputs
 
-        } else if(abstract.switchIndex === 1) {
-            inputs = abstractNode.node.rightInputs;
-            outputAudioNode = abstractNode.node.rightInputNode;
-            
-        } else {
-            console.error("Error: Confusing switch index on input switch");
-        }
-        //Tracking schema: leftInputs, rightInputs, outputs
+            outputs = abstractNode.node.outputs;
+            outputAudioNode = abstractNode.node.source;
 
-        //Input node: outputNode
-        //Output nodes: leftInputNode, rightInputNode
-        break;
-    case "volume-control":
-        //Tracking schema: outputs, inputs
+            //Output node: source
+            break;
+        case "master":
+            inputAudioNode = audioContext.destination;
+            inputs = abstractNode.node.inputs;
 
-        inputAudioNode = abstractNode.node.gainNode;
-        outputAudioNode = abstractNode.node.gainNode;
+            //Tracking schema: inputs
 
-        outputs = abstractNode.node.outputs;
-        inputs = abstractNode.node.inputs;
-
-        //Input node: gainNode
-        //Output node: gainNode
-        break;
-    case "file-source-control":
-        //Tracking schema: outputs
-
-        outputs = abstractNode.node.outputs;
-        outputAudioNode = abstractNode.node.source;
-
-        //Output node: source
-        break;
-    case "master":
-        inputAudioNode = audioContext.destination;
-        inputs = abstractNode.node.inputs;
-
-        //Tracking schema: inputs
-
-        //Input node: audioContext.destination
-        break;
+            //Input node: audioContext.destination
+            break;
     }
     return {
         inputAudioNode: inputAudioNode,
@@ -514,6 +478,9 @@ const genericDisconnect = (input,output,unmapDictionaries=true) => {
 }
 
 const genericConnect = (input,output,mapDictionaries=true) => {
+
+    //This method is very confused on the boolean difference between input and output.
+    //This current configuration is very messy but it works and all callees expect that it accepts "input" followed by "output"
 
     const genericInput = normalizeNode(output);
     const genericOutput = normalizeNode(input);
@@ -534,18 +501,14 @@ const genericConnect = (input,output,mapDictionaries=true) => {
             genericOutput.outputs[output.node.id] = output;
         }
         console.log(
-            `${output.node.name} ${
-                output.switchIndex === -1 ? "" : `(${output.switchIndex}) `
-            }connected to ${input.node.name} ${
-                input.switchIndex === -1 ? "" : `(${input.switchIndex})`
-            }`
+            `'${output.node.name}' connected to '${input.node.name}'`
         );
     }
 }
 
 const inputPinClicked = (nodeID,element,switchIndex=-1) => {
     processPinClick(nodeID,element,switchIndex,true,
-        (inputNode,outputNode,outputSwitchIndex,inputSwitchIndex) => {
+        (inputNode,outputNode,inputSwitchIndex,outputSwitchIndex) => {
         genericConnect({
             node: inputNode,
             switchIndex: inputSwitchIndex
@@ -563,7 +526,7 @@ const inputPinClicked = (nodeID,element,switchIndex=-1) => {
 
 const outputPinClicked = (nodeID,element,switchIndex=-1) => {
     processPinClick(nodeID,element,switchIndex,false,
-        (outputNode,inputNode,inputSwitchIndex,outputSwitchIndex) => {
+        (outputNode,inputNode,outputSwitchIndex,inputSwitchIndex) => {
             genericConnect({
                 node: inputNode,
                 switchIndex: inputSwitchIndex
@@ -592,39 +555,20 @@ const createSwitch = (id,name) => {
 
     const isInputType = name === "input switch";
 
-    let p1,p2,p3;
-
-    if(isInputType) {
-        p1 = createPin("input");
-        p2 = createPin("input");
-        p3 = createPin("output");
-        ((nodeID)=>{
-            p1.onclick = event => {
-                inputPinClicked(nodeID,event.target,0);
-            };
-            p2.onclick = event => {
-                inputPinClicked(nodeID,event.target,1);
-            };
-            p3.onclick = event => {
-                outputPinClicked(nodeID,event.target,2);
-            };
-        })(node.id);
-    } else {
-        p1 = createPin("output");
-        p2 = createPin("output");
-        p3 = createPin("input");
-        ((nodeID)=>{
-            p1.onclick = event => {
-                outputPinClicked(nodeID,event.target,0);
-            };
-            p2.onclick = event => {
-                outputPinClicked(nodeID,event.target,1);
-            };
-            p3.onclick = event => {
-                inputPinClicked(nodeID,event.target,2);
-            };
-        })(node.id);
-    }
+    let p1 = createPin("input");
+    let p2 = createPin("input");
+    let p3 = createPin("output");
+    ((nodeID)=>{
+        p1.onclick = event => {
+            inputPinClicked(nodeID,event.target,0);
+        };
+        p2.onclick = event => {
+            inputPinClicked(nodeID,event.target,1);
+        };
+        p3.onclick = event => {
+            outputPinClicked(nodeID,event.target,2);
+        };
+    })(node.id);
 
     node.appendChild(p1);
     node.appendChild(p2);
@@ -639,15 +583,14 @@ const createSwitch = (id,name) => {
     const checkboxInput = document.createElement("input");
     checkboxInput.type = "checkbox";
 
-    ((nodeID,isInputType)=>{
+    (nodeID=>{
         checkboxInput.onchange = event => {
             setSwitchState(
                 nodeID,
-                isInputType,
                 event.target.checked
             );
         }
-    })(node.id,isInputType);
+    })(node.id);
 
     const spanSlider = document.createElement("span");
     spanSlider.className = "slider";
